@@ -107,8 +107,8 @@ def analyse(assembly_file, trace_files):
     create_di_graph(cfg, -1, root_node)
     print(cfg.nodes(data=True))
 
-    # Configuration of the graph
-    cfg.graph['node']={'shape':'rectangle', 'fontname':'helvetica',  'fontsize':'8'}
+    # Configure the graph.
+    cfg.graph['node']={'shape':'box', 'fontname':'helvetica', 'margin':'0.07', 'width':'0.1', 'height':'0.1'}
     # cfg.graph['edges']={'arrowsize':'1.0'}
 
     cfg_graph = to_agraph(cfg)
@@ -116,12 +116,9 @@ def analyse(assembly_file, trace_files):
     cfg_graph.layout('dot')
     cfg_graph.draw('cfg.pdf')
 
-    # root nodun bilgilerini yazdır.
+    # Print root node information.
     print(cfg.nodes[root_node]['target1'])
     print(cfg.nodes[root_node]['target2'])
-
-
-
 
 
 def create_di_graph(cfg, previous_node, current_node):
@@ -160,47 +157,6 @@ def create_di_graph(cfg, previous_node, current_node):
         create_di_graph(cfg, current_node, end_list[index][1])
         cfg.nodes[current_node]['target2'] = end_list[index][2]
         create_di_graph(cfg, current_node, end_list[index][2])
-
-
-
-'''
-def create_di_graph_eski(cfg, previous_node, current_node):
-    """Creates control flow graph of the program.
-    """
-
-    index = 0
-
-    if (current_node in cfg_set) & (previous_node != -1):
-        cfg.add_edge(previous_node, current_node)
-        return
-
-    for i in range(0, len(start_list)):
-        if (start_list[i] == current_node):
-            index = i
-
-    cfg.add_node(current_node)
-    cfg_set.add(current_node)
-
-    if (previous_node != -1):
-        cfg.add_edge(previous_node, current_node)
-
-    cfg.node[current_node]['label'] = "Start: " + str(start_list[index]) + "; End: " + str(end_list[index][0])
-    cfg.node[current_node]['start'] = start_list[index]
-    cfg.node[current_node]['end'] = end_list[index][0]
-    cfg.node[current_node]['target1'] = "null"
-    cfg.node[current_node]['target2'] = "null"
-
-    if (len(end_list[index]) == 2):
-        # There is one target            
-        cfg.node[current_node]['target1'] = end_list[index][1]
-        create_di_graph(cfg, current_node, end_list[index][1])
-    elif (len(end_list[index]) == 3):
-        # There is two targets
-        cfg.node[current_node]['target1'] = end_list[index][1]
-        create_di_graph(cfg, current_node, end_list[index][1])
-        cfg.node[current_node]['target2'] = end_list[index][2]
-        create_di_graph(cfg, current_node, end_list[index][2])
-'''
 
 
 def remove_duplicates():
