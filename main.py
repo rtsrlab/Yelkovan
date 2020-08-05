@@ -14,22 +14,40 @@ import pygraphviz
 
 
 
-# Line numbers of start points of basic blocks.
+# Line numbers of starting points of basic blocks.
 start_list = []
 
 # Line numbers of end points and line numbers of targets of basic blocks.
+# In this list each item represents the end of a basic block. The first element
+# of the item is the line number of the end of a basic block. The other elements 
+# (if present) of the item represent the targets of the basic block.
 end_list = []
 
+# This is the stack like data structure which holds the starting line numbers
+# of functions which will be visited and processed for basic block
+# detection. During the analysis when we encounter a function we add it to this
+# list. When we visit a function we pop that function from this list.
 will_be_visited_fn_list = []
 
+# Conditional branch instructions
 branch_inst = ["beq", "bne", "blt", "bltu", "bge", "bgeu", "beqz", "bnez",
     "bltz", "blez", "bgtz", "bgez", "bgt", "bgtu", "ble", "bleu"]
 
+# Unconditional jump instruction
 jump_inst = ["jal", "j", "jalr", "jr"]
 
-cfg_set = set()
-main_return = 0
 
+# The set of nodes which have already been added to the the control flow graph 
+# of the program.
+# Each item in the set is an integer which represents the starting point of a 
+# basic block. By the help of this set, we know if a node is already in the 
+# control flow graph or not. We use this set in the creation of the control
+# flow graph to prevent duplicate entries.
+cfg_set = set()
+
+
+# Line number of the end of main function.
+end_of_main_function = 0
 
 # Starting line number of the root node of the graph.
 root_node = 0
@@ -91,9 +109,12 @@ def analyse(assembly_file, trace_files):
     start_list = sorted(set(start_list))        
     end_list.sort(key = itemgetter(0))
     remove_duplicates()
+
     print(start_list)
     print(end_list)
+    
     check_targets()
+    
     print(start_list)
     print(end_list)
 
@@ -159,8 +180,9 @@ def create_di_graph(cfg, previous_node, current_node):
         create_di_graph(cfg, current_node, end_list[index][2])
 
 
+
 def remove_duplicates():
-    """Detects and removes the duplicate keys in the end list.
+    """Detects and removes the duplicate keys in the end_list.
     """
 
     result = -1    
@@ -186,16 +208,26 @@ def remove_duplicates():
         if (result == -1):
             break
 
+
 def check_targets():
-    """Checks the targets of end of basic block.
+    """Checks the targets basic blocks.
     
-    If the end of a basic block is not the end of main function and has not got
-    a target then the next line should be the target.
+    Iterate all of the items in the end_list. The items of the end_list 
+    represent end points of basic blocks. First element of an item is the line 
+    number of a basic block. Other elements of an item are the targets of the 
+    basic block.
+    
+    If an item has not got target information and is not the end of main 
+    function, the next line of the item should be the target of the item.
+
+    - If the length of an item is 1 the item has not got target information.
+    - If the line number of an item (item[0]) is different from the line number 
+    of the end of main function the item is not the end of the main function.
     """
 
     for index, item in enumerate(end_list):
         if (len(item) == 1):
-            if (item[0] != main_return):
+            if (item[0] != end_of_main_function):
                 item = [item[0], item[0] + 1]
                 end_list[index] = item
 
@@ -207,7 +239,7 @@ def process_fn(line_no, assembly_code, trace_files):
 
     global start_list
     global end_list
-    global main_return
+    global end_of_main_function
 
     # Start of a funtion is always the start of a basic block.
     start_list.append(line_no)
@@ -234,7 +266,7 @@ def process_fn(line_no, assembly_code, trace_files):
             # the return instruction.
             if "<main>:" in assembly_code[line_no - 1]:
                 end_list.append([index])
-                main_return = index
+                end_of_main_function = index
             else:
                 target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
                 end_list.append([index, target_line_no])
