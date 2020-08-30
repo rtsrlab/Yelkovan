@@ -210,7 +210,7 @@ def remove_duplicates():
 
 
 def check_targets():
-    """Checks the targets basic blocks.
+    """Checks the targets of basic blocks.
     
     Iterate all of the items in the end_list. The items of the end_list 
     represent end points of basic blocks. First element of an item is the line 
@@ -311,11 +311,26 @@ def process_branch_inst(line_no, tokens, assembly_code):
 
 
 def process_jump_inst(line_no, tokens, assembly_code, trace_files):
-    """Detects basic block start and end points from given jump instruction.
+    """Detects basic block starting and end points from given jump instruction.
     
-    Processes a given jump instrcution. Depending on the instruction it
-    detects the start and end points of basic blocks. Look at rules in the
-    documentation.
+    Processes a given jump instrcution. Depending on the instruction, it
+    detects the start and end points of basic blocks. This is achieved by the 
+    help of the rule set.
+
+    This function does not return a value. Instead it adds the line numbers of
+    the detected starting and end points of basic blocks to the start_list and
+    end_list.
+
+    Parameters
+    ----------
+    line_no : integer 
+        Line number of the jump instruction which will be processed.
+    tokens : list of strings
+        The jump instruction line which will be processed.
+    assembly_code : list of strings 
+        Assembly code of the program.
+    trace_files : list of files
+        List of trace files of the program.
     """
 
     global will_be_visited_fn_list
@@ -390,7 +405,18 @@ def find_target(source_address, assembly_code, trace_files):
     block.
 
     If source address of the jump instruction is not found in the trace files
-    than this means that an the path was not taken. In this case return -1.
+    than this means that an the path was not taken. In this case returns -1.
+
+    Args:
+        source_address (str): The source address which will be searched in trace 
+            files.
+        assembly_code (list of strings): Assembly code in which the line number 
+            of the target address will be searched.
+        trace_files (list): List of trace files in which the source address will 
+            be searched.
+
+    Returns:
+        line_no (int): The line number of the target address.
     """
 
     for file in trace_files:
@@ -414,7 +440,14 @@ def find_target(source_address, assembly_code, trace_files):
 
 
 def address_to_line_no(address, assembly_code):
-    """Finds the line number of an address.
+    """Finds the line number of an address and returns the line number of it.
+
+    Args:
+        address (str): The address whose line number will be searched.
+        assembly_code (list of strings): Assembly code in which the address will
+            be searched.
+    Returns:
+        line_no (int): The line number of the address.
     """
 
     for line_no, line in enumerate(assembly_code, 0):
@@ -426,19 +459,23 @@ def address_to_line_no(address, assembly_code):
 
 
 def find_main_fn(assembly_code):
-    """Searches for main function.
+    """Finds the main function and returns the line number of the starting
+    point of it.
 
-    Searches for "main" function in the contents of the assembly file.
+    Searches for main function in the contents of the assembly file. After 
+    finding the main function the line number of the starting point of it is
+    returned.
     
-    The presence of "<main>:" expression in the line indicates the start of main
-    function.
+    The presence of "<main>:" expression in a line indicates the start of the 
+    main function.
 
     Args:
-        assembly_code: Assembly code in which the main function
-            will be searched.
+        assembly_code (list of strings): Assembly code in which the main 
+            function will be searched.
     
     Returns:
-        The line number of the main funtion in the file.
+        line_no (int): The line number of the of the starting point of the main 
+            funtion in the file.
     """
 
     for line_no, line in enumerate(assembly_code, 0):
