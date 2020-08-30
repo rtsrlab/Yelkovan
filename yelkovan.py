@@ -93,7 +93,7 @@ def analyse(assembly_file, trace_files):
 
     # Find main function and add to it to the will be visited function list.
     # It is the first function in this list.
-    line_no = find_main_fn(assembly_code) + 1
+    line_no = find_main_function(assembly_code) + 1
     will_be_visited_fn_list.append(line_no)
 
     while(will_be_visited_fn_list):
@@ -124,7 +124,7 @@ def analyse(assembly_file, trace_files):
 
     # Create directed graph.
     cfg = networkx.DiGraph()
-    root_node = find_main_fn(assembly_code) + 1
+    root_node = find_main_function(assembly_code) + 1
     create_di_graph(cfg, -1, root_node)
     print(cfg.nodes(data=True))
 
@@ -407,16 +407,21 @@ def find_target(source_address, assembly_code, trace_files):
     If source address of the jump instruction is not found in the trace files
     than this means that an the path was not taken. In this case returns -1.
 
-    Args:
-        source_address (str): The source address which will be searched in trace 
-            files.
-        assembly_code (list of strings): Assembly code in which the line number 
-            of the target address will be searched.
-        trace_files (list): List of trace files in which the source address will 
-            be searched.
+    Parameters
+    ----------
+    source_address : string
+        The source address which will be searched in trace files.
+    assembly_code : list of strings
+        Assembly code in which the line number of the target address will be 
+        searched.
+    trace_files : list of files
+        List of trace files in which the source address will be searched.
 
-    Returns:
-        line_no (int): The line number of the target address.
+    Returns
+    -------
+    line_no : integer
+        The line number of the target address. Positive integer if successful,
+        -1 otherwise
     """
 
     for file in trace_files:
@@ -442,23 +447,40 @@ def find_target(source_address, assembly_code, trace_files):
 def address_to_line_no(address, assembly_code):
     """Finds the line number of an address and returns the line number of it.
 
-    Args:
-        address (str): The address whose line number will be searched.
-        assembly_code (list of strings): Assembly code in which the address will
-            be searched.
-    Returns:
-        line_no (int): The line number of the address.
+    Parameters
+    ----------
+    address : string
+        The address whose line number will be searched.
+    assembly_code : list of strings
+        Assembly code in which the address will be searched.
+
+    Returns
+    -------
+    integer
+        The line number of the of the address if successful.
+    
+    Raises
+    ------
+    Exception
+        If the address is not found in the assembly code.
     """
+
+
+    found = False
 
     for line_no, line in enumerate(assembly_code, 0):
         if line and line.split()[0][:-1] == address:
+            found = True
             break
 
-    return line_no
+    if found == True:
+        return line_no
+    else:
+        raise Exception('The address could not be found in the current assembly file.')
 
 
 
-def find_main_fn(assembly_code):
+def find_main_function(assembly_code):
     """Finds the main function and returns the line number of the starting
     point of it.
 
@@ -469,21 +491,35 @@ def find_main_fn(assembly_code):
     The presence of "<main>:" expression in a line indicates the start of the 
     main function.
 
-    Args:
-        assembly_code (list of strings): Assembly code in which the main 
-            function will be searched.
+    Parameters
+    ----------
+    assembly_code : list of strings
+        Assembly code in which the main function will be searched.
     
-    Returns:
-        line_no (int): The line number of the of the starting point of the main 
-            funtion in the file.
+    Returns
+    -------
+    integer
+        The line number of the of the starting point of the main funtion in the
+        assembly code if successful.
+    
+    Raises
+    ------
+    Exception
+        If main function is not found in the assembly code.
     """
+
+
+    found = False
 
     for line_no, line in enumerate(assembly_code, 0):
         if "<main>:" in line:
+            found = True
             break
 
-    return line_no
-
+    if found == True:
+        return line_no
+    else:
+        raise Exception('Main function could not be found in the current assembly file.')
 
 
 if __name__ == "__main__":
