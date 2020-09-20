@@ -212,17 +212,25 @@ def remove_duplicates():
 def check_targets():
     """Checks the targets of basic blocks.
     
+    This function is used to check the targets of basic blocks. It detects
+    targets of basic blocks which are not detected until now. This only happens
+    if a basic block's target is the next line of the same basic block.
+
     Iterate all of the items in the end_list. The items of the end_list 
     represent end points of basic blocks. First element of an item is the line 
-    number of a basic block. Other elements of an item are the targets of the 
-    basic block.
+    number of the end point of a basic block. Other elements of an item are the
+    targets of the basic block.
     
-    If an item has not got target information and is not the end of main 
-    function, the next line of the item should be the target of the item.
+    If an item has not got target information (basic block has not got any 
+    target) and is not the end of the main function, the next line of the item 
+    should be the target of the item (the target of the basic block should be
+    the next line).
 
-    - If the length of an item is 1 the item has not got target information.
-    - If the line number of an item (item[0]) is different from the line number 
-    of the end of main function the item is not the end of the main function.
+    1. If the length of an item is 1 the item has not got target information.
+    2. If the line number of an item (item[0]) is different from the line number 
+    of the end of main function, the item is not the end of the main function.
+    In this case the next line of the item is the target of the item (basic 
+    block).
     """
 
     for index, item in enumerate(end_list):
@@ -235,6 +243,35 @@ def check_targets():
 
 def process_fn(line_no, assembly_code, trace_files):
     """Detects basic blocks in a given funtion.
+
+    Traverses a function in assembly code line by line and detects basic blocks.
+    
+    First it checks if the is null or not. If the line is null this means the
+    end of the function is reached. In this case returns. If the line is not 
+    null the line is tokenized and analyzed.
+
+    If the length of the tokens is less than 3 the line is not a valid
+    instruction. In this case processing continues with the next line.
+
+    If the line is a "ret" (return from subroutine) instruction starting and
+    end points of basic blocks are detected and written in start_list and
+    end_list respectively.
+
+    If the line is a branch or jump instruction the related functions which
+    process them is called.
+    
+    This function does not return a value. Instead it adds the line numbers of
+    the detected starting and end points of basic blocks to the start_list and
+    end_list.
+
+    Parameters
+    ----------
+    line_no : integer
+        Line number of the branch instruction which will be processed.
+    assembly_code : list of strings 
+        Assembly code of the program.
+    trace_files : list of files
+        List of trace files of the program.
     """
 
     global start_list
@@ -247,16 +284,20 @@ def process_fn(line_no, assembly_code, trace_files):
     index = line_no - 1
     while(True):
         index = index + 1
+
         if (assembly_code[index] == ""):
+            # Reached end of the function.
             return
+
         tokens = assembly_code[index].split()
         # tokens[0] -> address:
         # tokens[1] -> hexadecimal code of machine language instruction
         # tokens[2] -> mnemonic
         # tokens[3] -> operands
 
+
         if (len(tokens) < 3):
-            # Not a valid instruction
+            # Not a valid instruction. Continue with next line.
             continue
 
         elif (tokens[2] == 'ret'):
@@ -279,11 +320,24 @@ def process_fn(line_no, assembly_code, trace_files):
     
 
 def process_branch_inst(line_no, tokens, assembly_code):
-    """Detects basic block start and end points from given branch instruction.
+    """Detects basic block starting and end points from given branch instruction.
     
-    Processes a given branch instrcution. Depending on the instruction it
-    detects the start and end points of basic blocks. Look at rules in the
-    documentation.
+    Processes a given branch instrcution. Depending on the instruction, it
+    detects the startng and end points of basic blocks. This is achieved by the 
+    help of the rule set.
+
+    This function does not return a value. Instead it adds the line numbers of
+    the detected starting and end points of basic blocks to the start_list and
+    end_list.
+
+    Parameters
+    ----------
+    line_no : integer 
+        Line number of the branch instruction which will be processed.
+    tokens : list of strings
+        The branch instruction line which will be processed.
+    assembly_code : list of strings 
+        Assembly code of the program.
     """
 
     operands = tokens[3].split(',')
@@ -314,7 +368,7 @@ def process_jump_inst(line_no, tokens, assembly_code, trace_files):
     """Detects basic block starting and end points from given jump instruction.
     
     Processes a given jump instrcution. Depending on the instruction, it
-    detects the start and end points of basic blocks. This is achieved by the 
+    detects the starting and end points of basic blocks. This is achieved by the 
     help of the rule set.
 
     This function does not return a value. Instead it adds the line numbers of
@@ -393,8 +447,8 @@ def process_jump_inst(line_no, tokens, assembly_code, trace_files):
 
 
 def find_target(source_address, assembly_code, trace_files):
-    """Finds the line number of the target address of a jump instruction by
-    the help of trace files.
+    """Finds the line number of the target address of an indirect jump 
+    instruction by the help of trace files.
  
     This is achived by processing trace files. Firstly the source address 
     of jump instruction is found in the trace files. The subsequent line  
