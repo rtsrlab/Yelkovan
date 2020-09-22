@@ -1,4 +1,16 @@
 
+"""Yelkovan main file.
+
+Yelkovan detects basic blocks of risc-v assembly code by the help of trace
+information.
+
+
+TODO: Continue to work on type annotations.
+TODO: Move helper functions to another module.
+TODO: Work on more efficient usage of cfg variable.
+
+"""
+
 # List sorting
 from operator import itemgetter
 
@@ -54,8 +66,12 @@ root_node = 0
 
 
 
-def main():
-    """Main function
+def main() -> None:
+    """Main function of Yelkovan.
+
+    This function is called by the entry point of the Yelkovan. This function
+    searches the current directory for assembly file and trace files of the
+    program and then calls analyse function for program structure analysis.
     """
 
     # List of trace files.
@@ -70,12 +86,20 @@ def main():
     analyse(assembly_file, trace_files)
 
 
-def analyse(assembly_file, trace_files):
+def analyse(assembly_file: str, trace_files: list) -> None:
     """Analyses the contents of the assembly file.
+
+    This function is the main function who starts and manages basic block
+    detection operation.
+
+    Parameters
+    ----------
+    assembly_file : str
+        Name of the assembly file of the program.
+    trace_files : list of str
+        List of names of the trace files of the program.
     """
 
-    # Basic blocks. Each basic block is represented as a BasicBlock dataclass.
-    #basic_block = []
 
     visited_fn_list = []
 
@@ -144,6 +168,39 @@ def analyse(assembly_file, trace_files):
 
 def create_di_graph(cfg, previous_node, current_node):
     """Creates control flow graph of the program.
+
+    Note: This function is a recursive function.
+
+    In control flow graph a node represents a basic block, and an edge
+    represents the connection between two basic blocks. Starting line number of 
+    a basic block is the id of the node which represents that basic block.
+
+    Previous node and current node are id numbers of two nodes. In other words
+    they are starting line numbers of two basic blocks. Current node is the new 
+    node which will be added to the cfg. This function works as follows:
+
+    1. It adds a new node to the cfg with the current_node id number. It updates
+    the information of the node with the values from start_list and end_list.
+    2. It adds an edge between the current node and previous node. Current node 
+    is one of the targets of previous node.
+    3. It checks the targets of the current node (newly added basic block) by
+    looking at end_list. If there is a target information it calls itself again. 
+    In the new call, the id number of newly added node (current_node) will be 
+    passed as previous_node argument, and the target of the newly added node 
+    will be passed as current_node argument.
+    
+
+    Parameters
+    ----------
+    cfg : directed graph
+        This is the control flow graph of the program.
+    previous_node : int
+        The id number of the previous node. In other words the starting line
+        number of the previous basic block.
+    current_node : int
+        The id number of the current node. In other words the starting line
+        number of the current basic block. This node will be added to the
+        control flow graph.
     """
 
     index = 0
@@ -173,7 +230,7 @@ def create_di_graph(cfg, previous_node, current_node):
         cfg.nodes[current_node]['target1'] = end_list[index][1]
         create_di_graph(cfg, current_node, end_list[index][1])
     elif (len(end_list[index]) == 3):
-        # There is two targets
+        # There are two targets
         cfg.nodes[current_node]['target1'] = end_list[index][1]
         create_di_graph(cfg, current_node, end_list[index][1])
         cfg.nodes[current_node]['target2'] = end_list[index][2]
@@ -182,7 +239,15 @@ def create_di_graph(cfg, previous_node, current_node):
 
 
 def remove_duplicates():
-    """Detects and removes the duplicate keys in the end_list.
+    """Detects and removes the duplicate elements in the end_list.
+
+    This function is called afeter analyzing the assembly code. During detection 
+    we don't check duplicate end points. Therefore, after analyzing the file 
+    there may be duplicate elements in the end_list. This function checks and 
+    removes them.
+
+    This function does not return a value. Instead it makes required 
+    modifications to end_list.
     """
 
     result = -1    
@@ -212,9 +277,10 @@ def remove_duplicates():
 def check_targets():
     """Checks the targets of basic blocks.
     
-    This function is used to check the targets of basic blocks. It detects
-    targets of basic blocks which are not detected until now. This only happens
-    if a basic block's target is the next line of the same basic block.
+    This function is called afeter analyzing the assembly code. It is used to 
+    check the targets of basic blocks. It detects targets of basic blocks which 
+    are not detected until now. This only happens if a basic block's target is 
+    the next line of the same basic block.
 
     Iterate all of the items in the end_list. The items of the end_list 
     represent end points of basic blocks. First element of an item is the line 
@@ -231,6 +297,9 @@ def check_targets():
     of the end of main function, the item is not the end of the main function.
     In this case the next line of the item is the target of the item (basic 
     block).
+
+    This function does not return a value. Instead it makes required
+    modifications to end_list.
     """
 
     for index, item in enumerate(end_list):
@@ -300,6 +369,7 @@ def process_fn(line_no, assembly_code, trace_files):
             # Not a valid instruction. Continue with next line.
             continue
 
+        # TODO: Move "ret" code to process_jump_inst function.
         elif (tokens[2] == 'ret'):
             # Return from subroutine
 
