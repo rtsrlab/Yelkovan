@@ -1,11 +1,29 @@
 
 """Yelkovan main file.
 
-Yelkovan detects basic blocks of risc-v assembly code by the help of trace
-information.
+Yelkovan is a program structure analyser for RISC-V architecture. It detects 
+basic blocks of risc-v assembly code and creates the control flow graph of the 
+program. The cfg is outputted to command line as text and to pdf file as figure. 
+
+The detection of the basic blocks is performed by the help of trace information 
+of the program. Yelkovan analyses the trace files created by gem5 architecture 
+simulator.
+
+Yelkovan takes two types of input files. Assembly file of the program and
+trace files of the program. To be able to create a cfg of the a program perform
+the following steps:
+
+1. Create the assembly file of the program's executable file by the help of 
+objdump tool which is delivered with the RISC-V compiler toolchain.
+2. Give ".dump" extension to the assembly file.
+3. Create trace files of the program by using gem5 architecture simulator.
+4. Give ".trc" extension to the trace files.
+5. Put above mentioned files to the working directory of Yelkovan.
+6. Run Yelkovan.
+7. The text outuput is going to be shown in command line interface, and the
+graphical output is created as a pdf file in the working directory.
 
 
-TODO: Continue to work on type annotations.
 TODO: Move helper functions to another module.
 TODO: Work on more efficient usage of cfg variable.
 
@@ -166,7 +184,8 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     print(cfg.nodes[root_node]['target2'])
 
 
-def create_di_graph(cfg, previous_node, current_node):
+def create_di_graph(cfg: networkx.DiGraph, previous_node: int, 
+                    current_node: int) -> None:
     """Creates control flow graph of the program.
 
     Note: This function is a recursive function.
@@ -238,7 +257,7 @@ def create_di_graph(cfg, previous_node, current_node):
 
 
 
-def remove_duplicates():
+def remove_duplicates() -> None:
     """Detects and removes the duplicate elements in the end_list.
 
     This function is called afeter analyzing the assembly code. During detection 
@@ -274,7 +293,7 @@ def remove_duplicates():
             break
 
 
-def check_targets():
+def check_targets() -> None:
     """Checks the targets of basic blocks.
     
     This function is called afeter analyzing the assembly code. It is used to 
@@ -287,12 +306,12 @@ def check_targets():
     number of the end point of a basic block. Other elements of an item are the
     targets of the basic block.
     
-    If an item has not got target information (basic block has not got any 
+    If an item has not target information (basic block has not any 
     target) and is not the end of the main function, the next line of the item 
     should be the target of the item (the target of the basic block should be
     the next line).
 
-    1. If the length of an item is 1 the item has not got target information.
+    1. If the length of an item is 1 the item has not target information.
     2. If the line number of an item (item[0]) is different from the line number 
     of the end of main function, the item is not the end of the main function.
     In this case the next line of the item is the target of the item (basic 
@@ -310,7 +329,7 @@ def check_targets():
 
 
 
-def process_fn(line_no, assembly_code, trace_files):
+def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
     """Detects basic blocks in a given funtion.
 
     Traverses a function in assembly code line by line and detects basic blocks.
@@ -336,7 +355,7 @@ def process_fn(line_no, assembly_code, trace_files):
     Parameters
     ----------
     line_no : integer
-        Line number of the branch instruction which will be processed.
+        Starting line number of the function which is going to be processed.
     assembly_code : list of strings 
         Assembly code of the program.
     trace_files : list of files
@@ -364,7 +383,6 @@ def process_fn(line_no, assembly_code, trace_files):
         # tokens[2] -> mnemonic
         # tokens[3] -> operands
 
-
         if (len(tokens) < 3):
             # Not a valid instruction. Continue with next line.
             continue
@@ -389,7 +407,7 @@ def process_fn(line_no, assembly_code, trace_files):
             process_jump_inst(index, tokens, assembly_code, trace_files)
     
 
-def process_branch_inst(line_no, tokens, assembly_code):
+def process_branch_inst(line_no: int, tokens: list, assembly_code: list) -> None:
     """Detects basic block starting and end points from given branch instruction.
     
     Processes a given branch instrcution. Depending on the instruction, it
@@ -434,7 +452,8 @@ def process_branch_inst(line_no, tokens, assembly_code):
     start_list.append(target_line_no)
 
 
-def process_jump_inst(line_no, tokens, assembly_code, trace_files):
+def process_jump_inst(line_no: int, tokens: list, assembly_code: list, 
+                      trace_files: list) -> None:
     """Detects basic block starting and end points from given jump instruction.
     
     Processes a given jump instrcution. Depending on the instruction, it
@@ -516,7 +535,8 @@ def process_jump_inst(line_no, tokens, assembly_code, trace_files):
 
 
 
-def find_target(source_address, assembly_code, trace_files):
+def find_target(source_address: str, assembly_code: list, 
+                trace_files: list) ->int:
     """Finds the line number of the target address of an indirect jump 
     instruction by the help of trace files.
  
@@ -568,7 +588,7 @@ def find_target(source_address, assembly_code, trace_files):
 
 
 
-def address_to_line_no(address, assembly_code):
+def address_to_line_no(address: str, assembly_code: list) -> int:
     """Finds the line number of an address and returns the line number of it.
 
     Parameters
@@ -604,7 +624,7 @@ def address_to_line_no(address, assembly_code):
 
 
 
-def find_main_function(assembly_code):
+def find_main_function(assembly_code: list) -> int:
     """Finds the main function and returns the line number of the starting
     point of it.
 
