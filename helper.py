@@ -80,28 +80,18 @@ def get_function_end(function_name: str, assembly_code: list) -> int:
     Raises
     ------
     Exception
-        If the function is not found in the assembly code.
+        If the function is not found in the assembly code or if the "ret"
+        instruction in the function is not found.
     """
 
 
-    start_found = False
-    end_found = False
-    function_declaration = '<' + function_name + '>:'
+    found = False
+    start_no = get_function_start(function_name, assembly_code)
 
-    for start_no, line in enumerate(assembly_code, 0):
-        if function_declaration in line:
-            start_found = True
-            break
-
-    if start_found == False:
-        raise Exception('The function' + function_name + 'could not be found in \
-                         the current assembly code.')
-
-    # This is the first instruction of the function.
-    start_no = start_no + 1
-    line_no = start_no
+    line_no = start_no - 1
     for line in assembly_code[start_no:]:
-
+        line_no = line_no + 1
+        
         # If an empty line is found this means the function ended and no ret
         # instruction is encountered
         if (line == ''):
@@ -110,13 +100,58 @@ def get_function_end(function_name: str, assembly_code: list) -> int:
         # Tokenize the current line and check if it is ret instruction or not.
         tokens = line.split()
         if (len(tokens) >= 3 and tokens[2] == 'ret'):
-            end_found = True
+            found = True
             break
 
-        line_no = line_no + 1
 
-    if end_found == True:
+    if found == True:
         return line_no
     else:
         raise Exception('The end point of the function' + function_name + 'could \
                          not be found in the current assembly code.')
+
+
+
+def address_to_line_no(address: str, assembly_code: list) -> int:
+    """Finds the line number of an address.
+
+    Converts the address information to line number. Expected address 
+    information is in bare hexadecimal format without any 0x, h, etc. extension.
+    A sample address is "101e8". This address information is the first value
+    of each instruction line in assembly code of the program.
+
+    The addresses in assembly code ends with colon symbol (:). A sample first 
+    value in of instruction line is "101c4:". Therefore, during extaction of
+    this value from the instruction line, colon symbol is discarded.
+
+    Parameters
+    ----------
+    address : str
+        The address whose line number will be searched.
+    assembly_code : list of str
+        Assembly code in which the address will be searched.
+
+    Returns
+    -------
+    int
+        The line number of the of the address if successful.
+    
+    Raises
+    ------
+    Exception
+        If the address is not found in the assembly code.
+    """
+
+
+    found = False
+
+    for line_no, line in enumerate(assembly_code, 0):
+        # -1 below is to discard the colon symbol (:) in the instruction line.
+        if line and line.split()[0][:-1] == address:
+            found = True
+            break
+
+    if found == True:
+        return line_no
+    else:
+        raise Exception('The address could not be found in the current assembly file.')

@@ -23,6 +23,7 @@ objdump tool which is delivered with the RISC-V compiler toolchain.
 7. The text outuput is going to be shown in command line interface, and the
 graphical output is created as a pdf file in the working directory.
 
+NOTE: Line numbers in Yelkovan starts with 0.
 
 TODO: Work on more efficient usage of cfg variable.
 
@@ -322,7 +323,7 @@ def check_targets(assembly_code: list) -> None:
 
     Parameters
     ----------
-    assembly_code : list of str 
+    assembly_code : list of str
         Assembly code of the program. This is needed to find the line number of
         the last instruction of the main function.
     """
@@ -363,7 +364,7 @@ def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
 
     Parameters
     ----------
-    line_no : integer
+    line_no : int
         Starting line number of the function which is going to be processed.
     assembly_code : list of str
         Assembly code of the program.
@@ -427,11 +428,11 @@ def process_branch_inst(line_no: int, tokens: list, assembly_code: list) -> None
 
     Parameters
     ----------
-    line_no : integer 
+    line_no : int
         Line number of the branch instruction which will be processed.
-    tokens : list of strings
+    tokens : list of str
         The branch instruction line which will be processed.
-    assembly_code : list of strings 
+    assembly_code : list of str
         Assembly code of the program.
     """
 
@@ -439,7 +440,7 @@ def process_branch_inst(line_no: int, tokens: list, assembly_code: list) -> None
 
     # operands[2] -> target address
 
-    target_line_no = address_to_line_no(operands[2], assembly_code)
+    target_line_no = helper.address_to_line_no(operands[2], assembly_code)
 
     # The line of the current branch instruction is the end of a basic block.
     # Branch instructions have two targets.
@@ -473,13 +474,13 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
 
     Parameters
     ----------
-    line_no : integer 
+    line_no : int
         Line number of the jump instruction which will be processed.
-    tokens : list of strings
+    tokens : list of str
         The jump instruction line which will be processed.
-    assembly_code : list of strings 
+    assembly_code : list of str 
         Assembly code of the program.
-    trace_files : list of files
+    trace_files : list of file
         List of trace files of the program.
     """
 
@@ -490,7 +491,7 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
 
         # operands[2] -> target address
         
-        target_line_no = address_to_line_no(operands[1], assembly_code)
+        target_line_no = helper.address_to_line_no(operands[1], assembly_code)
 
         start_list.append(line_no + 1)
         start_list.append(target_line_no)
@@ -502,7 +503,7 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
         
         # No need to split. Fourth token in the line of a j instruction is
         # the target address
-        target_line_no = address_to_line_no(tokens[3], assembly_code)
+        target_line_no = helper.address_to_line_no(tokens[3], assembly_code)
 
         start_list.append(line_no + 1)
         start_list.append(target_line_no)
@@ -560,17 +561,17 @@ def find_target(source_address: str, assembly_code: list,
 
     Parameters
     ----------
-    source_address : string
+    source_address : str
         The source address which will be searched in trace files.
     assembly_code : list of strings
         Assembly code in which the line number of the target address will be 
         searched.
-    trace_files : list of files
+    trace_files : list of file
         List of trace files in which the source address will be searched.
 
     Returns
     -------
-    line_no : integer
+    line_no : int
         The line number of the target address. Positive integer if successful,
         -1 otherwise
     """
@@ -592,42 +593,6 @@ def find_target(source_address: str, assembly_code: list,
                         return line_no_2
 
     return -1
-
-
-
-def address_to_line_no(address: str, assembly_code: list) -> int:
-    """Finds the line number of an address and returns the line number of it.
-
-    Parameters
-    ----------
-    address : string
-        The address whose line number will be searched.
-    assembly_code : list of strings
-        Assembly code in which the address will be searched.
-
-    Returns
-    -------
-    integer
-        The line number of the of the address if successful.
-    
-    Raises
-    ------
-    Exception
-        If the address is not found in the assembly code.
-    """
-
-
-    found = False
-
-    for line_no, line in enumerate(assembly_code, 0):
-        if line and line.split()[0][:-1] == address:
-            found = True
-            break
-
-    if found == True:
-        return line_no
-    else:
-        raise Exception('The address could not be found in the current assembly file.')
 
 
 
