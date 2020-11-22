@@ -1,5 +1,5 @@
 
-"""Yelkovan main file.
+"""Yelkovan
 
 Yelkovan is a program structure analyser for RISC-V architecture. It detects 
 basic blocks of risc-v assembly code and creates the control flow graph of the 
@@ -24,10 +24,12 @@ objdump tool which is delivered with the RISC-V compiler toolchain.
 graphical output is created as a pdf file in the working directory.
 
 
-TODO: Move helper functions to another module.
 TODO: Work on more efficient usage of cfg variable.
 
 """
+
+import helper
+
 
 # List sorting
 from operator import itemgetter
@@ -75,9 +77,6 @@ jump_inst = ["jal", "j", "jalr", "jr"]
 # flow graph to prevent duplicate entries.
 cfg_set = set()
 
-
-# Line number of the end of main function.
-end_of_main_function = 0
 
 # Starting line number of the root node of the graph.
 root_node = 0
@@ -135,7 +134,7 @@ def analyse(assembly_file: str, trace_files: list) -> None:
 
     # Find main function and add to it to the will be visited function list.
     # It is the first function in this list.
-    line_no = find_main_function(assembly_code) + 1
+    line_no = helper.get_function_start('main', assembly_code)
     will_be_visited_fn_list.append(line_no)
 
     while(will_be_visited_fn_list):
@@ -148,14 +147,14 @@ def analyse(assembly_file: str, trace_files: list) -> None:
             visited_fn_list.append(line_no)
             process_fn(line_no, assembly_code, trace_files)
 
-    start_list = sorted(set(start_list))        
+    start_list = sorted(set(start_list))
     end_list.sort(key = itemgetter(0))
     remove_duplicates()
 
     print(start_list)
     print(end_list)
     
-    check_targets()
+    check_targets(assembly_code)
     
     print(start_list)
     print(end_list)
@@ -166,7 +165,7 @@ def analyse(assembly_file: str, trace_files: list) -> None:
 
     # Create directed graph.
     cfg = networkx.DiGraph()
-    root_node = find_main_function(assembly_code) + 1
+    root_node = helper.get_function_start('main', assembly_code)
     create_di_graph(cfg, -1, root_node)
     print(cfg.nodes(data=True))
 
@@ -293,7 +292,7 @@ def remove_duplicates() -> None:
             break
 
 
-def check_targets() -> None:
+def check_targets(assembly_code: list) -> None:
     """Checks the targets of basic blocks.
     
     This function is called afeter analyzing the assembly code. It is used to 
@@ -319,11 +318,20 @@ def check_targets() -> None:
 
     This function does not return a value. Instead it makes required
     modifications to end_list.
+
+    Parameters
+    ----------
+    assembly_code : list of str 
+        Assembly code of the program. This is needed to find the line number of
+        the last instruction of the main function.
     """
+
+    # Find the line number of the last instruction of main function.
+    main_function_end = helper.get_function_end('main', assembly_code)
 
     for index, item in enumerate(end_list):
         if (len(item) == 1):
-            if (item[0] != end_of_main_function):
+            if (item[0] != main_function_end):
                 item = [item[0], item[0] + 1]
                 end_list[index] = item
 
@@ -356,15 +364,14 @@ def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
     ----------
     line_no : integer
         Starting line number of the function which is going to be processed.
-    assembly_code : list of strings 
+    assembly_code : list of str
         Assembly code of the program.
-    trace_files : list of files
+    trace_files : list of file
         List of trace files of the program.
     """
 
     global start_list
     global end_list
-    global end_of_main_function
 
     # Start of a funtion is always the start of a basic block.
     start_list.append(line_no)
@@ -395,7 +402,6 @@ def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
             # the return instruction.
             if "<main>:" in assembly_code[line_no - 1]:
                 end_list.append([index])
-                end_of_main_function = index
             else:
                 target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
                 end_list.append([index, target_line_no])
@@ -624,50 +630,8 @@ def address_to_line_no(address: str, assembly_code: list) -> int:
 
 
 
-def find_main_function(assembly_code: list) -> int:
-    """Finds the main function and returns the line number of the starting
-    point of it.
-
-    Searches for main function in the contents of the assembly file. After 
-    finding the main function the line number of the starting point of it is
-    returned.
-    
-    The presence of "<main>:" expression in a line indicates the start of the 
-    main function.
-
-    Parameters
-    ----------
-    assembly_code : list of strings
-        Assembly code in which the main function will be searched.
-    
-    Returns
-    -------
-    integer
-        The line number of the of the starting point of the main funtion in the
-        assembly code if successful.
-    
-    Raises
-    ------
-    Exception
-        If main function is not found in the assembly code.
-    """
-
-
-    found = False
-
-    for line_no, line in enumerate(assembly_code, 0):
-        if "<main>:" in line:
-            found = True
-            break
-
-    if found == True:
-        return line_no
-    else:
-        raise Exception('Main function could not be found in the current assembly file.')
-
-
 if __name__ == "__main__":
-    """Entry point of the program.
+    """Entry point of the Yelkovan.
     """
 
     main()
