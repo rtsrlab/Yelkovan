@@ -152,14 +152,7 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     start_list = sorted(set(start_list))
     end_list.sort(key = itemgetter(0))
     remove_duplicates()
-
-    print(start_list)
-    print(end_list)
-    
     check_targets(assembly_code)
-    
-    print(start_list)
-    print(end_list)
 
     if (len(start_list) != len(end_list)):
         print("Error: Lengths of the start list and end list do not match!")
@@ -169,7 +162,6 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     cfg = networkx.DiGraph()
     root_node = helper.get_function_start('main', assembly_code)
     create_di_graph(cfg, -1, root_node)
-    print(cfg.nodes(data=True))
 
     # Configure the graph.
     cfg.graph['node']={'shape':'box', 'fontname':'helvetica', 'margin':'0.07', 'width':'0.1', 'height':'0.1'}
@@ -180,9 +172,17 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     cfg_graph.layout('dot')
     cfg_graph.draw('cfg.pdf')
 
-    # Print root node information.
-    print(cfg.nodes[root_node]['target1'])
-    print(cfg.nodes[root_node]['target2'])
+    # The followings are different print options of the graph. These lines are 
+    # for demonstration and learning purposes.
+    # 
+    # Print nodes of the graph with data values.
+    # print(cfg.nodes(data=True))
+    # 
+    # Print target1 value of root_node.
+    # print(cfg.nodes[root_node]['target1'])
+    # 
+    # Print target2 value of root node.
+    # print(cfg.nodes[root_node]['target2'])
 
 
 def create_di_graph(cfg: networkx.DiGraph, previous_node: int, 
