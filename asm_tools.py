@@ -1,6 +1,6 @@
-"""Helper functions of Yelkovan.
+"""Assembly tools of Yelkovan.
 
-This file includes helper functions of Yelkovan.
+This file includes helper functions to process assembly file.
 
 
 """
@@ -146,10 +146,13 @@ def address_to_line_no(address: str, assembly_code: list) -> int:
     found = False
 
     for line_no, line in enumerate(assembly_code, 0):
-        # -1 below is to discard the colon symbol (:) in the instruction line.
-        if line and line.split()[0][:-1] == address:
+        tokens = line.split()
+        # If len(tokens >=3) this is a valid code line.
+        # -1 is to discard the colon symbol (:) at the end of the token.
+        if len(tokens) >= 3 and tokens[0][:-1] == address:
             found = True
             break
+
 
     if found == True:
         return line_no
