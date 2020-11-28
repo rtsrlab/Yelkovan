@@ -23,14 +23,21 @@ objdump tool which is delivered with the RISC-V compiler toolchain.
 7. The text outuput is going to be shown in command line interface, and the
 graphical output is created as a pdf file in the working directory.
 
-NOTE: Line numbers in Yelkovan starts with 0.
-
-TODO: Work on more efficient usage of cfg variable.
+Yelkovan Defaults
+- Line numbers in Yelkovan starts with 0.
+- Addresses of instructions are in hexadecimal format and does not include
+additional symbols like "0x", "h", etc. A sample address is "100c8".
 
 """
 
-# Helper of the Yelkovan
-import helper
+# Assembly tools of Yelkovan which includes functions that help processing 
+# assembly file.
+import asm_tools
+
+# Trace tools of Yelkovan which includes functions that help processing 
+# trace files.
+import trace_tools
+
 
 
 # List sorting
@@ -136,7 +143,7 @@ def analyse(assembly_file: str, trace_files: list) -> None:
 
     # Find main function and add to it to the will be visited function list.
     # It is the first function in this list.
-    line_no = helper.get_function_start('main', assembly_code)
+    line_no = asm_tools.get_function_start('main', assembly_code)
     will_be_visited_fn_list.append(line_no)
 
     while(will_be_visited_fn_list):
@@ -160,7 +167,7 @@ def analyse(assembly_file: str, trace_files: list) -> None:
 
     # Create directed graph.
     cfg = networkx.DiGraph()
-    root_node = helper.get_function_start('main', assembly_code)
+    root_node = asm_tools.get_function_start('main', assembly_code)
     create_di_graph(cfg, -1, root_node)
 
     # Configure the graph.
@@ -172,8 +179,8 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     cfg_graph.layout('dot')
     cfg_graph.draw('cfg.pdf')
 
-    # The followings are different print options of the graph. These lines are 
-    # for demonstration and learning purposes.
+    # The following code includes different print options of the graph. These 
+    # are for demonstration and learning purposes.
     # 
     # Print nodes of the graph with data values.
     # print(cfg.nodes(data=True))
@@ -329,7 +336,7 @@ def check_targets(assembly_code: list) -> None:
     """
 
     # Find the line number of the last instruction of main function.
-    main_function_end = helper.get_function_end('main', assembly_code)
+    main_function_end = asm_tools.get_function_end('main', assembly_code)
 
     for index, item in enumerate(end_list):
         if (len(item) == 1):
@@ -396,7 +403,7 @@ def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
             # Not a valid instruction. Continue with next line.
             continue
 
-        # TODO: Move "ret" code to process_jump_inst function.
+
         elif (tokens[2] == 'ret'):
             # Return from subroutine
 
@@ -440,7 +447,7 @@ def process_branch_inst(line_no: int, tokens: list, assembly_code: list) -> None
 
     # operands[2] -> target address
 
-    target_line_no = helper.address_to_line_no(operands[2], assembly_code)
+    target_line_no = asm_tools.address_to_line_no(operands[2], assembly_code)
 
     # The line of the current branch instruction is the end of a basic block.
     # Branch instructions have two targets.
@@ -491,7 +498,7 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
 
         # operands[2] -> target address
         
-        target_line_no = helper.address_to_line_no(operands[1], assembly_code)
+        target_line_no = asm_tools.address_to_line_no(operands[1], assembly_code)
 
         start_list.append(line_no + 1)
         start_list.append(target_line_no)
@@ -503,7 +510,7 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
         
         # No need to split. Fourth token in the line of a j instruction is
         # the target address
-        target_line_no = helper.address_to_line_no(tokens[3], assembly_code)
+        target_line_no = asm_tools.address_to_line_no(tokens[3], assembly_code)
 
         start_list.append(line_no + 1)
         start_list.append(target_line_no)
@@ -544,26 +551,31 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
 
 
 def find_target(source_address: str, assembly_code: list, 
-                trace_files: list) ->int:
+                trace_files: list) -> int:
     """Finds the line number of the target address of an indirect jump 
     instruction by the help of trace files.
  
     This is achived by processing trace files. Firstly the source address 
     of jump instruction is found in the trace files. The subsequent line  
-    is the target of the jump instruction. This function extracts the address
-    information from the subsequent line in the trace file. Then
-    finds the line in the assembly file which contains that address. That
-    line is the target of the jump instruction and the beginning of a basic
-    block.
+    is the target of the jump instruction. The address information in the
+    subsequent line is extracted. Then, the code line which starts with this
+    address is searched in the assembly file. This code line is the target of 
+    the jump instruction and the beginning of a basic block. The line number
+    of this code line is returned.
 
-    If source address of the jump instruction is not found in the trace files
-    than this means that an the path was not taken. In this case returns -1.
+    If source address of the jump instruction is not found in the trace files, 
+    this means that the path was not taken. In this case an error is raised. The
+    error is raised by the "get_next_address" function in the trace_tools file.
+
+    If the target address of the jump instruction is not found the assembly file
+    an error is raised. The error is raised by the "address_to_line_no" function 
+    in the trace_tools file.
 
     Parameters
     ----------
     source_address : str
         The source address which will be searched in trace files.
-    assembly_code : list of strings
+    assembly_code : list of str
         Assembly code in which the line number of the target address will be 
         searched.
     trace_files : list of file
@@ -573,26 +585,14 @@ def find_target(source_address: str, assembly_code: list,
     -------
     line_no : int
         The line number of the target address. Positive integer if successful,
-        -1 otherwise
+        raises error otherwise
     """
 
-    for file in trace_files:
-        with open(file) as f:
-            content = f.read()
-        f.closed
 
-        trace_info = content.splitlines()
+    target_address = trace_tools.get_next_address(source_address, trace_files)
+    line_no = asm_tools.address_to_line_no(target_address, assembly_code)
 
-        for line_no_1, line_1 in enumerate(trace_info, 0):
-            if source_address in line_1:
-                tokens = trace_info[line_no_1 + 1].split()
-                target_address = tokens[4][2:] + ':'
-                
-                for line_no_2, line_2 in enumerate(assembly_code, 0):
-                    if (target_address in line_2):
-                        return line_no_2
-
-    return -1
+    return line_no
 
 
 
