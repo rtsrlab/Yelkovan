@@ -1,7 +1,7 @@
 
 """Yelkovan
 
-Yelkovan is a program structure analyser for RISC-V architecture. It detects 
+Yelkovan is a program analyser for RISC-V architecture. It detects 
 basic blocks of risc-v assembly code and creates the control flow graph of the 
 program. The cfg is outputted to command line as text and to pdf file as figure. 
 
@@ -39,6 +39,8 @@ import asm_tools
 import trace_tools
 
 
+# Type hints support regarding collections
+from typing import List, Set, Dict, Tuple, Optional
 
 # List sorting
 from operator import itemgetter
@@ -56,6 +58,7 @@ import pygraphviz
 
 
 # Line numbers of starting points of basic blocks.
+# In this list each item represents the start of a basic block.
 start_list = []
 
 # Line numbers of end points and line numbers of targets of basic blocks.
@@ -100,14 +103,32 @@ def main() -> None:
     program and then calls analyse function for program structure analysis.
     """
 
-    # List of trace files.
-    trace_files = []
+    # Assembly file
+    assembly_file: str = None
 
+    # List of trace files.
+    trace_files: List[str] = []
+
+
+    # listdir function returns a list of strings which represent file names.
     for file_name in listdir("./"):
         if file_name.endswith(".trc"):
             trace_files.append(file_name)
         elif file_name.endswith(".dump"):
             assembly_file = file_name
+
+    # If there is no trace file, raise exception.
+    if not trace_files:
+        raise Exception("Trace files are not found. Please make sure at least a "
+                        "trace file is present with \".trc\" extension in the "
+                        "current working directory.")
+
+    # If there is no assembly file, raise exception.
+    if assembly_file == None:
+        raise Exception("Assembly file is not found. Please make sure an assembly " 
+                        "file is present with \".dump\" extension in the current "
+                        "working directory.")
+
 
     analyse(assembly_file, trace_files)
 
@@ -179,17 +200,103 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     cfg_graph.layout('dot')
     cfg_graph.draw('cfg.pdf')
 
-    # The following code includes different print options of the graph. These 
-    # are for demonstration and learning purposes.
-    # 
-    # Print nodes of the graph with data values.
-    # print(cfg.nodes(data=True))
-    # 
-    # Print target1 value of root_node.
-    # print(cfg.nodes[root_node]['target1'])
-    # 
-    # Print target2 value of root node.
-    # print(cfg.nodes[root_node]['target2'])
+
+def add_item_to_end_list(end_point: int, target: List[int]) -> None:
+    """Adds an item to the end list.
+    
+    Each item of this list may be a list depending on the end point.
+    The first element of the item is the line number of the end point of a basic 
+    block. The following elemnents of the item are the line numbers of targets
+    of the end point of the basic block. When the end point of a basic block is 
+    found this function is called to add it to start_list.
+
+    This function first checks if the item is in the list or not.
+    
+    If the item is in the list its targets are checked not added. If the targets are also 
+    in the list this function returns. If the target(s) are not present they are 
+    added.
+
+    If the item is not in the list, it is added with all of its targets.
+
+    This function does not return a value.
+    
+
+    Parameters
+    ----------
+    end_point: int
+        The line number of the end of a basic block which will be added to
+        start_list.
+    target: list of int
+        The list of line numbers of the targets of the end point.
+    """
+
+    global end_list
+    item_found: bool = False
+    item: List[int] = []
+    target_found: bool
+    item_no: int = 0
+
+
+    # Remove duplicate items in target list.
+    if len(target) > 0:
+        target = set(target)
+
+    # Before appending a new item check if it is already added or not.
+    for item_no, item in enumerate(end_list, 0):
+        if item[0] == end_point:
+            item_found = True
+            break
+
+    # If the end point is already in the end_list, add targets. Otherwise,
+    # add both end point and targets.
+    if item_found == True:
+        for target_item in target:
+            target_found = False
+            for sub_item in end_list[item_no]:
+                if (target_item == sub_item):
+                    target_found = True
+            if target_found == False:
+                end_list[item_no].append(target_item)         
+    else:
+        item_list = [end_point]
+        item_list.extend(target)
+        end_list.append(item_list)
+        
+
+
+def add_item_to_start_list(starting_point: int) -> None:
+    """Adds an item to the start list.
+    
+    The item is the the line number of the starting point of the basic block. 
+    When the starting point of a basic block is found this function is called to
+    add it to start_list.
+
+    This function first checks if the item is already in the list or not. If 
+    the item is in the list it is not added. If it is not in the list it is 
+    added.
+
+    This function does not return a value.
+    
+
+    Parameters
+    ----------
+    starting_point : int
+        The line number of the start of a basic block which will be added to
+        start_list.
+    """
+
+    global start_list
+    found: bool = False
+
+    # Before appending a new item check if it is already added.
+    for item in start_list:
+        if item == starting_point:
+            found = True
+            break
+
+    # If the item is not in the list add it.
+    if found == False:
+        start_list.appen(starting_point)
 
 
 def create_di_graph(cfg: networkx.DiGraph, previous_node: int, 
