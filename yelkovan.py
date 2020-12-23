@@ -59,13 +59,13 @@ import pygraphviz
 
 # Line numbers of starting points of basic blocks.
 # In this list each item represents the start of a basic block.
-start_list = []
+start_list: List[int] = []
 
 # Line numbers of end points and line numbers of targets of basic blocks.
 # In this list each item represents the end of a basic block. The first element
 # of the item is the line number of the end of a basic block. The other elements 
 # (if present) of the item represent the targets of the basic block.
-end_list = []
+end_list: List[List[int]] = []
 
 # This is the stack like data structure which holds the starting line numbers
 # of functions which will be visited and processed for basic block
@@ -232,17 +232,13 @@ def add_item_to_end_list(end_point: int, target: List[int]) -> None:
 
     global end_list
     item_found: bool = False
-    item: List[int] = []
-    target_found: bool
-    item_no: int = 0
+    item_no: int
 
-
-    # Remove duplicate items in target list.
-    if len(target) > 0:
-        target = set(target)
 
     # Before appending a new item check if it is already added or not.
-    for item_no, item in enumerate(end_list, 0):
+    item_no = -1
+    for item in end_list:
+        item_no = item_no + 1
         if item[0] == end_point:
             item_found = True
             break
@@ -251,12 +247,8 @@ def add_item_to_end_list(end_point: int, target: List[int]) -> None:
     # add both end point and targets.
     if item_found == True:
         for target_item in target:
-            target_found = False
-            for sub_item in end_list[item_no]:
-                if (target_item == sub_item):
-                    target_found = True
-            if target_found == False:
-                end_list[item_no].append(target_item)         
+            if target_item not in end_list[item_no]:
+                end_list[item_no].append(target_item)                
     else:
         item_list = [end_point]
         item_list.extend(target)
