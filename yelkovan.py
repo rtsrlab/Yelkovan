@@ -232,27 +232,24 @@ def add_item_to_end_list(end_point: int, target: List[int]) -> None:
 
     global end_list
     item_found: bool = False
-    item_no: int
+    item_no: int = -1
 
 
-    # Before appending a new item check if it is already added or not.
-    item_no = -1
-    for item in end_list:
-        item_no = item_no + 1
+    # If end_point is not in the list add it.
+    if end_point not in end_list[0]:
+        end_list.append([end_point])
+
+    # Find the index of the end_point.
+    for index, item in enumerate(end_list):
         if item[0] == end_point:
-            item_found = True
+            item_no = index
             break
 
-    # If the end point is already in the end_list, add targets. Otherwise,
-    # add both end point and targets.
-    if item_found == True:
-        for target_item in target:
-            if target_item not in end_list[item_no]:
-                end_list[item_no].append(target_item)                
-    else:
-        item_list = [end_point]
-        item_list.extend(target)
-        end_list.append(item_list)
+    # Add targets to the end_point.
+    for target_item in target:
+        if target_item not in end_list[item_no]:
+            end_list[item_no].append(target_item)                
+
         
 
 
@@ -278,16 +275,9 @@ def add_item_to_start_list(starting_point: int) -> None:
     """
 
     global start_list
-    found: bool = False
 
-    # Before appending a new item check if it is already added.
-    for item in start_list:
-        if item == starting_point:
-            found = True
-            break
-
-    # If the item is not in the list add it.
-    if found == False:
+    # If the item is not already in the start_list add it.
+    if starting_point not in start_list:
         start_list.appen(starting_point)
 
 
@@ -367,7 +357,7 @@ def create_di_graph(cfg: networkx.DiGraph, previous_node: int,
 def remove_duplicates() -> None:
     """Detects and removes the duplicate elements in the end_list.
 
-    This function is called afeter analyzing the assembly code. During detection 
+    This function is called after analyzing the assembly code. During detection 
     we don't check duplicate end points. Therefore, after analyzing the file 
     there may be duplicate elements in the end_list. This function checks and 
     removes them.
