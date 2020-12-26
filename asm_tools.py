@@ -40,7 +40,7 @@ def get_function_start(function_name: str, assembly_code: list) -> int:
     found = False
     function_declaration = '<' + function_name + '>:'
 
-    for line_no, line in enumerate(assembly_code, 0):
+    for line_no, line in enumerate(assembly_code):
         if function_declaration in line:
             found = True
             break
@@ -74,7 +74,7 @@ def get_function_end(function_name: str, assembly_code: list) -> int:
     Returns
     -------
     integer
-        The line number of the of the last instruction of the funtion in the
+        The line number of the last instruction of the funtion in the
         assembly code if successful.
     
     Raises
@@ -107,8 +107,8 @@ def get_function_end(function_name: str, assembly_code: list) -> int:
     if found == True:
         return line_no
     else:
-        raise Exception('The end point of the function' + function_name + 'could \
-                         not be found in the current assembly code.')
+        raise Exception("The end point of the function" + function_name + "could "
+                        "not be found in the current assembly code.")
 
 
 
@@ -142,19 +142,41 @@ def address_to_line_no(address: str, assembly_code: list) -> int:
         If the address is not found in the assembly code.
     """
 
+    line_no: int = -1
+    found: bool = False
 
-    found = False
-
-    for line_no, line in enumerate(assembly_code, 0):
+    for index, line in enumerate(assembly_code):
         tokens = line.split()
         # If len(tokens >=3) this is a valid code line.
         # -1 is to discard the colon symbol (:) at the end of the token.
         if len(tokens) >= 3 and tokens[0][:-1] == address:
-            found = True
+            line_no = index
             break
 
-
-    if found == True:
-        return line_no
+    if line_no == -1:
+        raise Exception("The address could not be found in the current assembly "
+                        "file. So the line number of address could not be determined. "
+                        "Address: " + address)
     else:
-        raise Exception('The address could not be found in the current assembly file.')
+        return line_no
+
+
+def get_function_name(address: str, assembly_code: list) -> str:
+
+    function_name: str = None
+    line_no: int = -1
+
+    line_no = address_to_line_no(address, assembly_code)
+    if line_no == -1:
+        raise Exception("Line number of the address can not be determined. Address: " + address)
+
+    for i in range(line_no, -1, -1):
+        tokens = assembly_code[i].split()
+        if (len(tokens) == 2) and (">:" in tokens[1]):
+            function_name = tokens[1][1 : -2]
+            break
+
+    if function_name is None:
+        raise Exception("Function name can not be determined. Address: " + address)
+    else:
+        return function_name
