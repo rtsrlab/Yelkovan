@@ -164,27 +164,28 @@ def analyse(assembly_file: str, trace_files: list) -> None:
 
     # Find main function and add to it to the will be visited function list.
     # It is the first function in this list.
-    line_no = asm_tools.get_function_start('main', assembly_code)
+    line_no = asm_tools.get_function_start("main", assembly_code)
     will_be_visited_fn_list.append(line_no)
 
     while(will_be_visited_fn_list):
 
         line_no = will_be_visited_fn_list.pop()
 
-        # If the starting line number of the funtion is not in visited function
+        # If the starting line number of the function is not in visited function
         # list then add it to the list and process the related function.
         if (line_no not in visited_fn_list):
             visited_fn_list.append(line_no)
             process_fn(line_no, assembly_code, trace_files)
 
+    # Remove duplicate elements of the start list and then sort it.
     start_list = sorted(set(start_list))
+
     end_list.sort(key = itemgetter(0))
     remove_duplicates()
     check_targets(assembly_code)
 
     if (len(start_list) != len(end_list)):
-        print("Error: Lengths of the start list and end list do not match!")
-        return
+        raise Exception("Error: Lengths of the start list and end list do not match!")
 
     # Create directed graph.
     cfg = networkx.DiGraph()
