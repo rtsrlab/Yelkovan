@@ -36,20 +36,19 @@ def get_function_start(function_name: str, assembly_code: list) -> int:
         If the function is not found in the assembly code.
     """
 
+    line_no: int = -1
+    function_declaration:str = '<' + function_name + '>:'
 
-    found = False
-    function_declaration = '<' + function_name + '>:'
-
-    for line_no, line in enumerate(assembly_code):
+    for index, line in enumerate(assembly_code):
         if function_declaration in line:
-            found = True
+            line_no = index
             break
 
-    if found == True:
-        return line_no + 1
+    if line_no == -1:
+        raise Exception("The function" + function_name + "could not be found "
+                        "in the current assembly code.")
     else:
-        raise Exception('The function' + function_name + 'could not be found in \
-                         the current assembly code.')
+        return line_no + 1
 
 
 
@@ -155,13 +154,42 @@ def address_to_line_no(address: str, assembly_code: list) -> int:
 
     if line_no == -1:
         raise Exception("The address could not be found in the current assembly "
-                        "file. So the line number of address could not be determined. "
-                        "Address: " + address)
+                        "file. The line number of address could not be "
+                        "determined. Address: " + address)
     else:
         return line_no
 
 
 def get_function_name(address: str, assembly_code: list) -> str:
+    """Detects the name of a function.
+
+    Detects the name of the function that includes the address which is passed
+    as argument. Expected address information is in bare hexadecimal format 
+    without any 0x, h, etc. extension. A sample address is "101e8".
+
+    This function first gets the line number of the address. Then it processes
+    the assembly code backwards and looks for the template of function start
+    line. A sample function start line is like "000000000001019c <calc>:". It
+    looks for the ">:" symbols at the end of the line. When found it extracts
+    the string inside angle brackets (< and >). This is the function name.
+
+    Parameters
+    ----------
+    address : str
+        The address of the code line whose function will be searched.
+    assembly_code : list of str
+        Assembly code in which the function name will be searched.
+
+    Returns
+    -------
+    str
+        The name of the function which includes the address.
+    
+    Raises
+    ------
+    Exception
+        If the function name is not found in the assembly code.
+    """
 
     function_name: str = None
     line_no: int = -1
