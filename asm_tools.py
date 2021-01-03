@@ -7,7 +7,7 @@ This file includes helper functions to process assembly file.
 
 
 def get_function_start(function_name: str, assembly_code: list) -> int:
-    """Detects and returns the line number of the first instruction of a function.
+    """Detects the line number of the first instruction of a function.
 
     Searches for a function which is named with the parameter `function_name` in 
     the assembly code. After finding the function returns the line number of the 
@@ -91,8 +91,8 @@ def get_function_end(function_name: str, assembly_code: list) -> int:
     for line in assembly_code[start_no:]:
         line_no = line_no + 1
         
-        # If an empty line is found this means the function ended and no ret
-        # instruction is encountered
+        # If an empty line is found this means that the end of the function is 
+        # reached and no ret instruction is encountered
         if (line == ''):
             break
         
