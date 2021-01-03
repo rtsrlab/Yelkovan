@@ -46,7 +46,7 @@ from typing import List, Set, Dict, Tuple, Optional
 from operator import itemgetter
 
 # Directory listing
-from os import listdir
+from os import linesep, listdir
 
 # Graph operations
 import networkx
@@ -177,12 +177,16 @@ def analyse(assembly_file: str, trace_files: list) -> None:
             visited_fn_list.append(line_no)
             process_fn(line_no, assembly_code, trace_files)
 
-    # Remove duplicate elements of the start list and then sort it.
-    start_list = sorted(set(start_list))
+    # Sort start list.
+    start_list = sorted(start_list)
 
     end_list.sort(key = itemgetter(0))
     remove_duplicates()
     check_targets(assembly_code)
+
+    # This is for testing purposes. Remove this after modifying end list append
+    # commands.
+    print(f"End list after modification: {end_list}")
 
     if (len(start_list) != len(end_list)):
         raise Exception("Error: Lengths of the start list and end list do not match!")
@@ -202,7 +206,7 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     cfg_graph.draw('cfg.pdf')
 
 
-def add_item_to_end_list(end_point: int, target: List[int]) -> None:
+def add_item_to_end_list(end_point: int, target: List[int] = None) -> None:
     """Adds an item to the end list.
     
     Each item of this list may be a list depending on the end point.
@@ -237,8 +241,12 @@ def add_item_to_end_list(end_point: int, target: List[int]) -> None:
 
 
     # If end_point is not in the list add it.
-    if end_point not in end_list[0]:
+    if not end_list or end_point not in end_list[0]:
         end_list.append([end_point])
+
+    # If there is no target information there is nothing more to do. Just return.
+    if target is None:
+        return
 
     # Find the index of the end_point.
     for index, item in enumerate(end_list):
@@ -251,7 +259,6 @@ def add_item_to_end_list(end_point: int, target: List[int]) -> None:
         if target_item not in end_list[item_no]:
             end_list[item_no].append(target_item)                
 
-        
 
 
 def add_item_to_start_list(starting_point: int) -> None:
@@ -279,7 +286,7 @@ def add_item_to_start_list(starting_point: int) -> None:
 
     # If the item is not already in the start_list add it.
     if starting_point not in start_list:
-        start_list.appen(starting_point)
+        start_list.append(starting_point)
 
 
 def create_di_graph(cfg: networkx.DiGraph, previous_node: int, 
@@ -473,7 +480,7 @@ def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
     global end_list
 
     # Start of a funtion is always the start of a basic block.
-    start_list.append(line_no)
+    add_item_to_start_list(line_no)
 
     index = line_no - 1
     while(True):
@@ -497,13 +504,14 @@ def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
         elif (tokens[2] == 'ret'):
             # Return from subroutine
 
-            # If we are in main function just return. Else find the target of
-            # the return instruction.
+            # If we are in main function just return. Otherwise find the target
+            # of the return instruction.
             if "<main>:" in assembly_code[line_no - 1]:
-                end_list.append([index])
+                add_item_to_end_list(index)
             else:
+                # TODO: Remove the following code after moving target find operation to jalr instruction process.
                 target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
-                end_list.append([index, target_line_no])
+                add_item_to_end_list(index, [target_line_no])
 
         elif (tokens[2] in branch_inst):
             process_branch_inst(index, tokens, assembly_code)
@@ -543,18 +551,19 @@ def process_branch_inst(line_no: int, tokens: list, assembly_code: list) -> None
     # Branch instructions have two targets.
     # The subsequent line and the branch target are the targets of the branch
     # instruction. We add all this together to the end list.
-    end_list.append([line_no, line_no + 1, target_line_no])
+    add_item_to_end_list(line_no, [line_no + 1, target_line_no])
 
 
     # Previous line of the target of a branch instruction is also the end of
     # a basic block.
-    end_list.append([target_line_no - 1])
+    add_item_to_end_list(target_line_no - 1)
+
 
     # The subsequent line of a branch instruction is the start of basic block.
-    start_list.append(line_no + 1)
+    add_item_to_start_list(line_no + 1)
 
     # The target line of a branch instruction is the start of a basic block.
-    start_list.append(target_line_no)
+    add_item_to_start_list(target_line_no)
 
 
 def process_jump_inst(line_no: int, tokens: list, assembly_code: list, 
@@ -590,10 +599,12 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
         
         target_line_no = asm_tools.address_to_line_no(operands[1], assembly_code)
 
-        start_list.append(line_no + 1)
-        start_list.append(target_line_no)
-        end_list.append([line_no, target_line_no])
+        add_item_to_start_list(line_no + 1)
+        add_item_to_start_list(target_line_no)
+
+        add_item_to_end_list(line_no, [target_line_no])
         
+
         will_be_visited_fn_list.append(target_line_no)
 
     elif (tokens[2] == 'j'):
@@ -602,41 +613,46 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
         # the target address
         target_line_no = asm_tools.address_to_line_no(tokens[3], assembly_code)
 
-        start_list.append(line_no + 1)
-        start_list.append(target_line_no)
-        end_list.append([line_no, target_line_no])
+        add_item_to_start_list(line_no + 1)
+        add_item_to_start_list(target_line_no)
         
+        add_item_to_end_list(line_no, [target_line_no])
+        
+
         # Previous line of the target of a j instruction is also the end of
         # a basic block.
-        end_list.append([target_line_no - 1])
+        add_item_to_end_list(target_line_no - 1)
+
 
     elif (tokens[2] == 'jalr'):
 
-        start_list.append(line_no + 1)
+        add_item_to_start_list(line_no + 1)
 
         target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
         if (target_line_no == -1):
             print("Error: Could not find the target of jalr instruction on line " + line_no)
         else:
-            start_list.append(target_line_no)
+            add_item_to_start_list(target_line_no)
             will_be_visited_fn_list.append(target_line_no)
 
-        end_list.append([line_no, target_line_no])
+        add_item_to_end_list(line_no, [target_line_no])
         
     elif (tokens[2] == 'jr'):
 
-        start_list.append(line_no + 1)
+        add_item_to_start_list(line_no + 1)
 
         target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
         if (target_line_no == -1):
             print("Error: Could not find the target of jr instruction on line " + line_no)
         else:
-            start_list.append(target_line_no)
+            add_item_to_start_list(target_line_no)
+            
             # Previous line of the target of a jr instruction is also the end of
             # a basic block.
-            end_list.append([target_line_no - 1])
+            add_item_to_end_list(target_line_no - 1)
 
-        end_list.append([line_no, target_line_no])
+
+        add_item_to_end_list(line_no, [target_line_no])
 
 
 
