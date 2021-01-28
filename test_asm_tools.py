@@ -9,7 +9,7 @@ get_function_end
 """
 
 
-# This file tests asm_tools.
+# This file tests asm_tools.py
 import asm_tools
 
 
