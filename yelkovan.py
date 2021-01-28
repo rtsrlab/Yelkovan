@@ -78,7 +78,7 @@ branch_inst = ["beq", "bne", "blt", "bltu", "bge", "bgeu", "beqz", "bnez",
     "bltz", "blez", "bgtz", "bgez", "bgt", "bgtu", "ble", "bleu"]
 
 # Unconditional jump instruction
-jump_inst = ["jal", "j", "jalr", "jr"]
+jump_inst = ["ret", "jal", "j", "jalr", "jr"]
 
 
 # The set of nodes which have already been added to the the control flow graph 
@@ -181,12 +181,12 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     start_list = sorted(start_list)
 
     end_list.sort(key = itemgetter(0))
-    remove_duplicates()
+    #print(f"End list: {end_list}")
+    # After making sure duplicate items are not in the end_list remove remove_duplicates function.
+    #remove_duplicates()    
+    #print(f"End list: {end_list}")
     check_targets(assembly_code)
 
-    # This is for testing purposes. Remove this after modifying end list append
-    # commands.
-    print(f"End list after modification: {end_list}")
 
     if (len(start_list) != len(end_list)):
         raise Exception("Error: Lengths of the start list and end list do not match!")
@@ -197,7 +197,7 @@ def analyse(assembly_file: str, trace_files: list) -> None:
     create_di_graph(cfg, -1, root_node)
 
     # Configure the graph.
-    cfg.graph['node']={'shape':'box', 'fontname':'helvetica', 'margin':'0.07', 'width':'0.1', 'height':'0.1'}
+    cfg.graph['node']={'shape':'box', 'fontname':'sans', 'margin':'0.07', 'width':'0.1', 'height':'0.1'}
     # cfg.graph['edges']={'arrowsize':'1.0'}
 
     cfg_graph = to_agraph(cfg)
@@ -239,9 +239,14 @@ def add_item_to_end_list(end_point: int, target: List[int] = None) -> None:
     item_found: bool = False
     item_no: int = -1
 
+    # Check if the end_point is alread in the end_list.
+    for item in end_list:
+        if item[0] == end_point:
+            item_found = True
+            break
 
-    # If end_point is not in the list add it.
-    if not end_list or end_point not in end_list[0]:
+    # If the list is empty or the end_point is not in the list add it.
+    if item_found == False:
         end_list.append([end_point])
 
     # If there is no target information there is nothing more to do. Just return.
@@ -500,19 +505,6 @@ def process_fn(line_no: int, assembly_code: list, trace_files: list) -> None:
             # Not a valid instruction. Continue with next line.
             continue
 
-
-        elif (tokens[2] == 'ret'):
-            # Return from subroutine
-
-            # If we are in main function just return. Otherwise find the target
-            # of the return instruction.
-            if "<main>:" in assembly_code[line_no - 1]:
-                add_item_to_end_list(index)
-            else:
-                # TODO: Remove the following code after moving target find operation to jalr instruction process.
-                target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
-                add_item_to_end_list(index, [target_line_no])
-
         elif (tokens[2] in branch_inst):
             process_branch_inst(index, tokens, assembly_code)
             
@@ -592,20 +584,82 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
 
     global will_be_visited_fn_list
 
-    if (tokens[2] == 'jal'):
+
+    if (tokens[2] == 'ret'):
+        # If the ret instruction is in the main function then just add that line 
+        # the end list. Otherwise do nothing. Because we add other functions'
+        # ret instructions to the end list during function call detection in 
+        # jal and jalr instructions.
+        fn = asm_tools.get_function_name(assembly_code[line_no].split()[0][:-1], assembly_code)
+        if (fn == "main"):
+            add_item_to_end_list(line_no)
+
+    elif (tokens[2] == 'jal'):
         operands = tokens[3].split(',')
 
-        # operands[2] -> target address
+        # operands[1] -> target address
+        # Sample code: jal	ra,101c4 <main>
         
         target_line_no = asm_tools.address_to_line_no(operands[1], assembly_code)
 
-        add_item_to_start_list(line_no + 1)
-        add_item_to_start_list(target_line_no)
-
+        # The line of the jal instruction is the end of a basic block.
         add_item_to_end_list(line_no, [target_line_no])
         
+        # Next line of the jal instruction is the start of a basic block. 
+        add_item_to_start_list(line_no + 1)
 
+        # Target line of the jal instruction is the start of a basic block.
+        add_item_to_start_list(target_line_no)
+
+        # Target of the jal instruction is a function.
         will_be_visited_fn_list.append(target_line_no)
+
+        # Find the end point (ret instruction) of the target function. Its 
+        # return point is the next line of the jal instruction. Add this info
+        # to the end list.
+        # Yelkovan now detects the target of ret instruction
+        # by the help of jal instruction in assembly code. Although ret is 
+        # a indirect jump instruction there is no need to search for the
+        # target of ret instrucion in trace files.
+        target_fn = asm_tools.get_function_name(operands[1], assembly_code)
+        target_fn_end = asm_tools.get_function_end(target_fn, assembly_code)
+        add_item_to_end_list(target_fn_end, [line_no + 1])
+
+
+    elif (tokens[2] == 'jalr'):
+
+        # tokens[0][:-1] is the address of the jalr instruction.
+        target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
+
+        if (target_line_no == -1):
+            raise Exception("Error: Could not find the target of jalr instruction on line " + line_no)
+
+        # The line of the jalr instruction is the end of a basic block.
+        add_item_to_end_list(line_no, [target_line_no])
+
+        # Next line of the jalr instruction is the start of a basic block.
+        add_item_to_start_list(line_no + 1)
+        
+        # Target line of the jalr instruction is the start of a basic block.
+        add_item_to_start_list(target_line_no)
+
+        # Target of the jalr instruction is a function.
+        will_be_visited_fn_list.append(target_line_no)
+
+        # Find the end point (ret instruction) of the target function. Its 
+        # return point is the next line of the jal instruction. Add this info
+        # to the end list.
+        # Yelkovan now detects the target of ret instruction
+        # by the help of jal instruction in assembly code. Although ret is 
+        # a indirect jump instruction there is no need to search for the
+        # target of ret instrucion in trace files.
+        # assembly_code[target_line_no].split()[0][:-1] is the address of the 
+        # target line number. get_function_name of asm_tools.py expects address
+        # value.
+        target_fn = asm_tools.get_function_name(assembly_code[target_line_no].split()[0][:-1], assembly_code)
+        target_fn_end = asm_tools.get_function_end(target_fn, assembly_code)
+        add_item_to_end_list(target_fn_end, [line_no + 1])
+
 
     elif (tokens[2] == 'j'):
         
@@ -618,25 +672,11 @@ def process_jump_inst(line_no: int, tokens: list, assembly_code: list,
         
         add_item_to_end_list(line_no, [target_line_no])
         
-
         # Previous line of the target of a j instruction is also the end of
         # a basic block.
         add_item_to_end_list(target_line_no - 1)
-
-
-    elif (tokens[2] == 'jalr'):
-
-        add_item_to_start_list(line_no + 1)
-
-        target_line_no = find_target(tokens[0][:-1], assembly_code, trace_files)
-        if (target_line_no == -1):
-            print("Error: Could not find the target of jalr instruction on line " + line_no)
-        else:
-            add_item_to_start_list(target_line_no)
-            will_be_visited_fn_list.append(target_line_no)
-
-        add_item_to_end_list(line_no, [target_line_no])
         
+
     elif (tokens[2] == 'jr'):
 
         add_item_to_start_list(line_no + 1)
